@@ -447,10 +447,10 @@ public:
 
         void *domainRouter = us_socket_context_find_server_name_userdata(SSL, (struct us_socket_context_t *) httpContext, serverName.c_str());
         if (domainRouter) {
-            std::cout << "Browsed to SNI: " << serverName << std::endl;
+            //std::cout << "Browsed to SNI: " << serverName << std::endl;
             httpContextData->currentRouter = (decltype(httpContextData->currentRouter)) domainRouter;
         } else {
-            std::cout << "Cannot browse to SNI: " << serverName << std::endl;
+            //std::cout << "Cannot browse to SNI: " << serverName << std::endl;
             httpContextData->currentRouter = &httpContextData->router;
         }
     
