@@ -95,6 +95,9 @@ public:
 
     /* Server name */
     TemplatedApp &&addServerName(std::string hostname_pattern, SocketContextOptions options = {}) {
+        if(!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
 
         /* Do nothing if not even on SSL */
         if constexpr (SSL) {
@@ -108,6 +111,9 @@ public:
     }
 
     TemplatedApp &&removeServerName(std::string hostname_pattern) {
+        if(!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
     
         /* This will do for now, would be better if us_socket_context_remove_server_name returned the user data */
         auto *domainRouter = us_socket_context_find_server_name_userdata(SSL, (struct us_socket_context_t *) httpContext, hostname_pattern.c_str());
@@ -137,11 +143,19 @@ public:
 
     /* Returns the SSL_CTX of this app, or nullptr. */
     void *getNativeHandle() {
+        if (!httpContext) {
+            return nullptr;
+        }
+
         return us_socket_context_get_native_handle(SSL, (struct us_socket_context_t *) httpContext);
     }
 
     /* Attaches a "filter" function to track socket connections/disconnections */
     TemplatedApp &&filter(MoveOnlyFunction<void(HttpResponse<SSL> *, int)> &&filterHandler) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         httpContext->filter(std::move(filterHandler));
 
         return std::move(static_cast<TemplatedApp &&>(*this));
@@ -260,6 +274,10 @@ public:
 
     /* Closes all sockets including listen sockets. */
     TemplatedApp &&close() {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         us_socket_context_close(SSL, (struct us_socket_context_t *) httpContext);
         for (void *webSocketContext : webSocketContexts) {
             us_socket_context_close(SSL, (struct us_socket_context_t *) webSocketContext);
@@ -443,6 +461,10 @@ public:
 
     /* Browse to a server name, changing the router to this domain */
     TemplatedApp &&domain(std::string serverName) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         HttpContextData<SSL> *httpContextData = httpContext->getSocketContextData();
 
         void *domainRouter = us_socket_context_find_server_name_userdata(SSL, (struct us_socket_context_t *) httpContext, serverName.c_str());
@@ -572,11 +594,19 @@ public:
 
     /* Register event handler for accepted FD. Can be used together with adoptSocket. */
     TemplatedApp &&preOpen(LIBUS_SOCKET_DESCRIPTOR (*handler)(struct us_socket_context_t *, LIBUS_SOCKET_DESCRIPTOR)) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         httpContext->onPreOpen(handler);
         return std::move(static_cast<TemplatedApp &&>(*this));
     }
 
     TemplatedApp &&removeChildApp(TemplatedApp *app) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         /* Remove this app from httpContextData list over child apps and reset round robin */
         auto &childApps = httpContext->getSocketContextData()->childApps;
         childApps.erase(
@@ -589,6 +619,10 @@ public:
     }
 
     TemplatedApp &&addChildApp(TemplatedApp *app) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         /* Add this app to httpContextData list over child apps and set onPreOpen */
         httpContext->getSocketContextData()->childApps.push_back((void *) app);
         
@@ -629,16 +663,28 @@ public:
 
     /* adopt an externally accepted socket */
     TemplatedApp &&adoptSocket(LIBUS_SOCKET_DESCRIPTOR accepted_fd) {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         httpContext->adoptAcceptedSocket(accepted_fd);
         return std::move(static_cast<TemplatedApp &&>(*this));
     }
 
     TemplatedApp &&run() {
+        if (!httpContext) {
+            return std::move(static_cast<TemplatedApp &&>(*this));
+        }
+
         uWS::run();
         return std::move(static_cast<TemplatedApp &&>(*this));
     }
 
     Loop *getLoop() {
+        if (!httpContext) {
+            return nullptr;
+        }
+
         return (Loop *) httpContext->getLoop();
     }
 
