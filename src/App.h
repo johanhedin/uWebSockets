@@ -105,6 +105,21 @@ public:
             auto *domainRouter = new HttpRouter<typename HttpContextData<SSL>::RouterData>();
 
             us_socket_context_add_server_name(SSL, (struct us_socket_context_t *) httpContext, hostname_pattern.c_str(), options, domainRouter);
+
+            // If the new SSL CTX failed to be created it will not be added to the SNI tree. Do a simple
+            // lookup to se if it is there, otherwise clean up and treat it as a contructor failure.
+            // Note 1: This will probably not work if the missingServerName handler is
+            //         used and addServerName() is called from within that. This fix is
+            //         for use with the builder pattern at app creation
+            // Note 2: us_socket_context_find_server_name_userdata() does the lookup with wildcard
+            //         in mind so this might not work as intended when hostname_pattern contains
+            //         wildcards... But this is the best we can do for the time being.
+            if (us_socket_context_find_server_name_userdata(SSL, (struct us_socket_context_t *) httpContext, hostname_pattern.c_str()) == nullptr) {
+                delete (HttpRouter<typename HttpContextData<SSL>::RouterData> *) domainRouter;
+                this->~TemplatedApp();
+                httpContext = nullptr;
+                topicTree = nullptr;
+            }
         }
 
         return std::move(static_cast<TemplatedApp &&>(*this));
